@@ -8729,7 +8729,117 @@ name as the namespace.</p>
 writing and parse after reading.</p>
 </div>
 </div>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="modes"><a class="header" href="#modes">Modes</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="slash-commands-1"><a class="header" href="#slash-commands-1">Slash Commands</a></h1>
+<p>Slash commands are available in the <strong>web UI chat input</strong>, on all <strong>messaging
+channels</strong> (Telegram, Discord, Slack, Matrix, etc.), and where noted, via the
+<strong>CLI</strong>.</p>
+<p>Type <code>/</code> in the chat input to see the autocomplete popup.</p>
+<h2 id="session-management"><a class="header" href="#session-management">Session Management</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>/new</code></td><td>Start a new session</td></tr>
+<tr><td><code>/clear</code></td><td>Clear session history</td></tr>
+<tr><td><code>/compact</code></td><td>Summarize conversation to save tokens</td></tr>
+<tr><td><code>/context</code></td><td>Show session context and project info</td></tr>
+<tr><td><code>/sessions</code></td><td>List and switch sessions (channels only)</td></tr>
+<tr><td><code>/attach</code></td><td>Attach an existing session to this channel (channels only)</td></tr>
+<tr><td><code>/fork [label]</code></td><td>Fork the current session into a new branch</td></tr>
+</tbody></table>
+</div>
+<h3 id="fork"><a class="header" href="#fork">/fork</a></h3>
+<p>Creates an independent copy of the current conversation. The new session
+inherits the parent’s model, project, mode, and agent. Messages up to the
+current point are copied.</p>
+<pre><code>/fork experiment-a
+</code></pre>
+<p>Available in web UI, all channels, and via the <code>sessions.fork</code> RPC. See
+<a href="session-branching.html">Session Branching</a> for details.</p>
+<h2 id="control"><a class="header" href="#control">Control</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>/agent [N]</code></td><td>Switch session agent</td></tr>
+<tr><td><code>/mode [N|name|none]</code></td><td>Switch session mode</td></tr>
+<tr><td><code>/model [N]</code></td><td>Switch provider/model</td></tr>
+<tr><td><code>/sandbox [on|off|image N]</code></td><td>Toggle sandbox and choose image</td></tr>
+<tr><td><code>/sh [on|off]</code></td><td>Enter command mode (passthrough to shell)</td></tr>
+<tr><td><code>/stop</code></td><td>Abort the current running agent</td></tr>
+<tr><td><code>/peek</code></td><td>Show current thinking/tool status</td></tr>
+<tr><td><code>/update [version]</code></td><td>Update moltis (owner-only)</td></tr>
+</tbody></table>
+</div>
+<h2 id="quick-actions"><a class="header" href="#quick-actions">Quick Actions</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>/btw &lt;question&gt;</code></td><td>Quick side question (no tools, not persisted)</td></tr>
+<tr><td><code>/fast [on|off|status]</code></td><td>Toggle fast/priority mode</td></tr>
+<tr><td><code>/insights [days]</code></td><td>Show usage analytics (tokens, providers)</td></tr>
+<tr><td><code>/steer &lt;text&gt;</code></td><td>Inject guidance into the current agent run</td></tr>
+<tr><td><code>/queue &lt;message&gt;</code></td><td>Queue a message for the next agent turn</td></tr>
+<tr><td><code>/rollback [N|diff N]</code></td><td>List or restore file checkpoints</td></tr>
+</tbody></table>
+</div>
+<h3 id="btw"><a class="header" href="#btw">/btw</a></h3>
+<p>Ask a quick side question without tools and without persisting the exchange to
+session history. Uses the session’s current model and recent context (last 20
+messages) as read-only background.</p>
+<pre><code>/btw what's the default port for PostgreSQL?
+</code></pre>
+<p>The response appears inline and is discarded after display.</p>
+<h3 id="fast"><a class="header" href="#fast">/fast</a></h3>
+<p>Toggle fast/priority mode for the current session. When enabled, uses
+provider-specific priority processing where supported (Anthropic prompt caching
+priority, OpenAI priority processing).</p>
+<pre><code>/fast          # toggle
+/fast on       # enable
+/fast off      # disable
+/fast status   # check current state
+</code></pre>
+<p>Session-scoped — does not persist across gateway restarts.</p>
+<h3 id="insights"><a class="header" href="#insights">/insights</a></h3>
+<p>Show usage analytics from the metrics store. Displays LLM completions, token
+counts (input/output), errors, tool executions, and per-provider breakdowns.</p>
+<pre><code>/insights       # last 30 days (default)
+/insights 7     # last 7 days
+/insights 90    # last 90 days
+</code></pre>
+<p>In the web UI, <code>/insights</code> renders a formatted markdown table inline. The same
+data is available as a dashboard in <strong>Monitoring &gt; Insights</strong> tab, and via the
+REST API at <code>GET /api/metrics/insights?days=N</code>.</p>
+<h3 id="steer"><a class="header" href="#steer">/steer</a></h3>
+<p>Inject guidance into an active agent run without interrupting it. The text is
+seen by the LLM on its next iteration (after the current tool call completes).</p>
+<pre><code>/steer use the staging API, not production
+/steer focus on security issues only
+</code></pre>
+<p>Only works while an agent run is active. If no run is active, returns an error.</p>
+<h3 id="queue"><a class="header" href="#queue">/queue</a></h3>
+<p>Queue a message for the next agent turn without interrupting the current one.
+When the active run finishes, the queued message is automatically submitted.</p>
+<pre><code>/queue now write tests for what you just built
+</code></pre>
+<p>If no run is active, the message is sent immediately.</p>
+<h3 id="rollback"><a class="header" href="#rollback">/rollback</a></h3>
+<p>List and restore file checkpoints created by the automatic checkpointing
+system. Before every <code>Write</code>, <code>Edit</code>, or <code>MultiEdit</code> tool call, the original
+file is snapshotted.</p>
+<pre><code>/rollback           # list recent turns with file changes
+/rollback 1         # restore all files from turn 1
+/rollback diff 1    # preview which files were changed in turn 1
+</code></pre>
+<p>Checkpoints are grouped by <strong>turn</strong> (one user message = one turn). Restoring a
+turn reverts all files that were modified during that turn to their pre-turn
+state.</p>
+<p>See <a href="checkpoints.html">Checkpoints</a> for details on the automatic checkpointing
+system.</p>
+<h2 id="approval-management"><a class="header" href="#approval-management">Approval Management</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>/approvals</code></td><td>List pending exec approvals</td></tr>
+<tr><td><code>/approve [N]</code></td><td>Approve a pending exec request</td></tr>
+<tr><td><code>/deny [N]</code></td><td>Deny a pending exec request</td></tr>
+</tbody></table>
+</div>
+<h2 id="help"><a class="header" href="#help">Help</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Command</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>/help</code></td><td>Show available commands (handled locally by each channel)</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="modes"><a class="header" href="#modes">Modes</a></h1>
 <p>Modes are session-scoped prompt overlays. They change how the currently selected
 chat agent works right now without creating a new agent, changing memory, or
 changing sub-agent presets.</p>
@@ -8770,15 +8880,23 @@ agent preset.</p>
 conversation at any point. The new session diverges without affecting the
 original — useful for exploring alternative approaches, running “what if”
 scenarios, or preserving a checkpoint before a risky prompt.</p>
+<h2 id="fork-command"><a class="header" href="#fork-command">/fork Command</a></h2>
+<p>The quickest way to fork — type in the chat input or on any channel:</p>
+<pre><code>/fork                    # fork with auto-generated label
+/fork experiment-a       # fork with a custom label
+</code></pre>
+<p>Available in the web UI, Telegram, Discord, Slack, Matrix, and all other
+channels. See <a href="commands.html">Slash Commands</a> for the full list.</p>
 <h2 id="forking-from-the-ui"><a class="header" href="#forking-from-the-ui">Forking from the UI</a></h2>
-<p>There are two ways to fork a session in the web UI:</p>
+<p>There are three ways to fork a session:</p>
 <ul>
+<li><strong><code>/fork</code> command</strong> — type <code>/fork [label]</code> in the chat input.</li>
 <li><strong>Chat header</strong> — click the <strong>Fork</strong> button in the header bar (next to
 Delete). This is visible for every session except cron sessions.</li>
 <li><strong>Sidebar</strong> — hover over a session in the sidebar and click the fork icon
 that appears in the action buttons.</li>
 </ul>
-<p>Both create a new session that copies all messages from the current one and
+<p>All three create a new session that copies all messages from the current one and
 immediately switch you to it.</p>
 <p>Forked sessions appear <strong>indented</strong> under their parent in the sidebar, with a
 branch icon to distinguish them from top-level sessions. The metadata line
@@ -8864,22 +8982,32 @@ do not propagate to the fork, and vice versa.</p>
 </div>
 </div>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="checkpoints"><a class="header" href="#checkpoints">Checkpoints</a></h1>
-<p>Moltis now creates automatic checkpoints before built-in file mutations that
-change personal skills or agent memory files.</p>
-<h2 id="what-gets-checkpointed"><a class="header" href="#what-gets-checkpointed">What Gets Checkpointed</a></h2>
-<p>Current built-in checkpoint coverage includes:</p>
+<p>Moltis automatically snapshots files before the agent modifies them. If the
+agent breaks something, use <a href="commands.html#rollback"><code>/rollback</code></a> to restore files
+to their pre-turn state.</p>
+<h2 id="automatic-per-turn-checkpointing"><a class="header" href="#automatic-per-turn-checkpointing">Automatic Per-Turn Checkpointing</a></h2>
+<p>An <code>AutoCheckpointHook</code> runs before every file-mutating tool call (<code>Write</code>,
+<code>Edit</code>, <code>MultiEdit</code>) and snapshots the target file. Checkpoints are grouped by
+<strong>turn</strong> (one user message = one turn), so <code>/rollback 1</code> undoes all file changes
+from that turn at once.</p>
+<p>The hook also fires on skill and memory mutations:</p>
 <ul>
-<li><code>create_skill</code></li>
-<li><code>update_skill</code></li>
-<li><code>delete_skill</code></li>
-<li><code>write_skill_files</code></li>
-<li><code>memory_save</code></li>
-<li><code>memory_forget</code></li>
-<li><code>memory_delete</code></li>
+<li><code>create_skill</code>, <code>update_skill</code>, <code>delete_skill</code>, <code>write_skill_files</code></li>
+<li><code>memory_save</code>, <code>memory_forget</code>, <code>memory_delete</code></li>
 <li>the silent pre-compaction memory flush</li>
 </ul>
 <p>Each mutation creates a manifest-backed snapshot in <code>~/.moltis/checkpoints/</code>
 before the write or delete happens.</p>
+<h2 id="rollback-command"><a class="header" href="#rollback-command">/rollback Command</a></h2>
+<p>Available in the web UI, all channels (Telegram, Discord, Slack, etc.), and CLI.</p>
+<pre><code>/rollback           # list recent turns with file changes
+/rollback 1         # restore all files from turn 1
+/rollback diff 1    # preview which files were changed in turn 1
+</code></pre>
+<p>Turns are session-scoped — you only see checkpoints from your current session.</p>
+<h2 id="cleanup"><a class="header" href="#cleanup">Cleanup</a></h2>
+<p>When checkpoint count exceeds 500, the oldest 20% are automatically pruned.
+Cleanup runs lazily on each new checkpoint creation.</p>
 <h2 id="tool-surface"><a class="header" href="#tool-surface">Tool Surface</a></h2>
 <h3 id="checkpoints_list"><a class="header" href="#checkpoints_list"><code>checkpoints_list</code></a></h3>
 <p>List recent automatic checkpoints.</p>
@@ -9527,9 +9655,9 @@ the bound agent.</li>
 <li>The resulting session is visible in the web UI like any other conversation.</li>
 </ol>
 <h2 id="setup-1"><a class="header" href="#setup-1">Setup</a></h2>
-<p>Webhooks are configured exclusively from <strong>Settings → Webhooks</strong> in the web UI.
-They are not part of the onboarding flow.</p>
-<h3 id="creating-a-webhook"><a class="header" href="#creating-a-webhook">Creating a Webhook</a></h3>
+<p>Webhooks can be created from the <strong>web UI</strong>, the <strong>CLI</strong>, or by the <strong>agent</strong> itself
+using the <code>webhook</code> tool. They are not part of the onboarding flow.</p>
+<h3 id="creating-a-webhook-web-ui"><a class="header" href="#creating-a-webhook-web-ui">Creating a Webhook (Web UI)</a></h3>
 <ol>
 <li>Navigate to <strong>Settings → Webhooks</strong> and click <strong>Create webhook</strong>.</li>
 <li>Choose a <strong>source profile</strong> (GitHub, GitLab, Stripe, or Generic).</li>
@@ -9539,6 +9667,31 @@ They are not part of the onboarding flow.</p>
 <li>Click <strong>Create</strong> — the endpoint URL is displayed with a copy button.</li>
 <li>Register this URL in the external service’s webhook settings.</li>
 </ol>
+<h3 id="creating-a-webhook-cli"><a class="header" href="#creating-a-webhook-cli">Creating a Webhook (CLI)</a></h3>
+<pre><code class="language-bash">moltis webhooks create \
+  --name github-pr-review \
+  --source-profile github \
+  --auth-mode github_hmac_sha256 \
+  --events "pull_request.opened,pull_request.synchronize" \
+  --system-prompt "Review this PR for security issues"
+</code></pre>
+<p>For a zero-cost event forwarder (no LLM tokens):</p>
+<pre><code class="language-bash">moltis webhooks create \
+  --name stripe-payments \
+  --source-profile stripe \
+  --auth-mode stripe_webhook_signature \
+  --deliver-only \
+  --prompt-template "Payment: {data.object.amount} {data.object.currency} from {data.object.customer_email}" \
+  --deliver-to telegram \
+  --events "payment_intent.succeeded"
+</code></pre>
+<h3 id="creating-a-webhook-agent-tool"><a class="header" href="#creating-a-webhook-agent-tool">Creating a Webhook (Agent Tool)</a></h3>
+<p>The agent can create webhooks programmatically using the <code>webhook</code> tool:</p>
+<blockquote>
+<p>“Set up a webhook for GitHub issues on my repo and forward them to my Slack channel”</p>
+</blockquote>
+<p>The agent will use the <code>webhook</code> tool with <code>action: "create"</code> to set up the endpoint,
+then tell you the URL to register in GitHub’s settings.</p>
 <h3 id="endpoint-url"><a class="header" href="#endpoint-url">Endpoint URL</a></h3>
 <p>Each webhook gets a stable, high-entropy public URL:</p>
 <pre><code>https://your-moltis-host/api/webhooks/ingest/wh_a1b2c3d4e5f6...
@@ -9924,6 +10077,95 @@ and suggest next steps.
 <tr><td><code>webhooks_worker_queue_depth</code></td><td>Gauge</td><td>Pending deliveries in worker queue</td></tr>
 </tbody></table>
 </div>
+<h2 id="deliver-only-mode-webhook-proxy"><a class="header" href="#deliver-only-mode-webhook-proxy">Deliver-Only Mode (Webhook Proxy)</a></h2>
+<p>By default, each webhook delivery triggers an agent run — the LLM processes the
+event, reasons about it, and optionally acts using tools. This costs tokens and
+takes seconds.</p>
+<p><strong>Deliver-only mode</strong> skips the agent entirely. The webhook payload is rendered
+through a template and forwarded directly to a channel. Zero LLM tokens,
+sub-second delivery.</p>
+<p>This turns Moltis into a <strong>webhook proxy</strong>: external services POST events, and
+formatted messages appear in your Telegram, Discord, Slack, or any other
+configured channel.</p>
+<h3 id="when-to-use-deliver-only"><a class="header" href="#when-to-use-deliver-only">When to Use Deliver-Only</a></h3>
+<ul>
+<li><strong>Monitoring alerts</strong>: Datadog/Grafana/Sentry → Discord</li>
+<li><strong>Payment notifications</strong>: Stripe → Telegram</li>
+<li><strong>CI/CD status</strong>: GitHub Actions → Slack</li>
+<li><strong>Inter-service notifications</strong>: any HTTP POST → any channel</li>
+<li><strong>High-volume events</strong>: where per-event LLM calls would be wasteful</li>
+</ul>
+<h3 id="configuration-21"><a class="header" href="#configuration-21">Configuration</a></h3>
+<p>Set <code>deliver_only: true</code> and provide a <code>prompt_template</code> with <code>{dot.notation}</code>
+variables, plus a <code>deliver_to</code> channel target.</p>
+<p><strong>Web UI</strong>: Toggle “Deliver only” in the webhook settings, fill in the template
+and target channel.</p>
+<p><strong>CLI</strong>:</p>
+<pre><code class="language-bash">moltis webhooks create \
+  --name deploy-status \
+  --source-profile generic \
+  --auth-mode static_header \
+  --deliver-only \
+  --prompt-template "Deploy {status}: {environment} ({commit_sha})" \
+  --deliver-to slack
+</code></pre>
+<p><strong>Agent</strong>: The agent can also create deliver-only webhooks using the <code>webhook</code> tool.</p>
+<h3 id="how-it-works-14"><a class="header" href="#how-it-works-14">How It Works</a></h3>
+<pre><code>External Service POSTs event
+        │
+        ▼
+┌──────────────────────────────────┐
+│         Ingress Handler          │
+│  verify → filter → dedup → 202  │
+└──────────────┬───────────────────┘
+               │
+               ▼
+┌──────────────────────────────────┐
+│       Background Worker          │
+│  render template → deliver to    │
+│  channel → mark completed        │
+│  (no agent, no LLM tokens)       │
+└──────────────────────────────────┘
+</code></pre>
+<h2 id="template-rendering"><a class="header" href="#template-rendering">Template Rendering</a></h2>
+<p>Templates use <code>{dot.notation}</code> to interpolate values from the webhook JSON payload.</p>
+<div class="table-wrapper"><table><thead><tr><th>Syntax</th><th>Resolves to</th></tr></thead><tbody>
+<tr><td><code>{action}</code></td><td>Top-level field: <code>payload["action"]</code></td></tr>
+<tr><td><code>{pull_request.title}</code></td><td>Nested: <code>payload["pull_request"]["title"]</code></td></tr>
+<tr><td><code>{pull_request.user.login}</code></td><td>Deep nested: <code>payload["pull_request"]["user"]["login"]</code></td></tr>
+<tr><td><code>{__raw__}</code></td><td>Full payload as indented JSON (truncated at 4000 chars)</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><strong>Missing keys</strong> are left as literal <code>{key}</code> in the output (no error).</li>
+<li><strong>Objects and arrays</strong> are JSON-serialized (truncated at 2000 chars).</li>
+<li><strong>Strings and numbers</strong> are inserted directly.</li>
+</ul>
+<p>Templates work in both <code>prompt_template</code> (the message body) and <code>deliver_extra</code>
+values (channel-specific metadata like chat IDs).</p>
+<h3 id="example-github-issue--telegram"><a class="header" href="#example-github-issue--telegram">Example: GitHub Issue → Telegram</a></h3>
+<pre><code class="language-bash">moltis webhooks create \
+  --name github-issues \
+  --source-profile github \
+  --auth-mode github_hmac_sha256 \
+  --deliver-only \
+  --prompt-template "#{issue.number} {issue.title} ({action} by {sender.login})" \
+  --deliver-to telegram \
+  --events "issues.opened,issues.closed"
+</code></pre>
+<p>When someone opens issue #42 “Fix auth bug”, Telegram receives:</p>
+<pre><code>#42 Fix auth bug (opened by alice)
+</code></pre>
+<h3 id="example-stripe-payment--discord"><a class="header" href="#example-stripe-payment--discord">Example: Stripe Payment → Discord</a></h3>
+<pre><code class="language-bash">moltis webhooks create \
+  --name stripe-notify \
+  --source-profile stripe \
+  --auth-mode stripe_webhook_signature \
+  --deliver-only \
+  --prompt-template "Payment {data.object.status}: {data.object.amount} cents ({data.object.currency})" \
+  --deliver-to discord \
+  --events "payment_intent.succeeded,payment_intent.payment_failed"
+</code></pre>
 <h2 id="comparison-with-channels-and-cron"><a class="header" href="#comparison-with-channels-and-cron">Comparison with Channels and Cron</a></h2>
 <div class="table-wrapper"><table><thead><tr><th></th><th>Channels</th><th>Webhooks</th><th>Cron</th></tr></thead><tbody>
 <tr><td><strong>Purpose</strong></td><td>Human messaging</td><td>Machine event ingress</td><td>Scheduled tasks</td></tr>
@@ -10095,7 +10337,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 </ul>
 <p>You can remove any subscription by clicking the <strong>Remove</strong> button. This works from any device - useful for revoking access to old devices.</p>
 <p>Subscription changes are broadcast in real-time via WebSocket, so all connected clients see updates immediately.</p>
-<h3 id="how-it-works-14"><a class="header" href="#how-it-works-14">How It Works</a></h3>
+<h3 id="how-it-works-15"><a class="header" href="#how-it-works-15">How It Works</a></h3>
 <p>Moltis uses the Web Push API with VAPID (Voluntary Application Server Identification) keys:</p>
 <ol>
 <li><strong>VAPID Keys</strong>: On first run, the server generates a P-256 ECDSA key pair</li>
@@ -10145,7 +10387,7 @@ any supplementary files written alongside <code>SKILL.md</code>.</p>
 }
 </code></pre>
 <p>Clicking a notification will open or focus the app and navigate to the relevant chat.</p>
-<h2 id="configuration-21"><a class="header" href="#configuration-21">Configuration</a></h2>
+<h2 id="configuration-22"><a class="header" href="#configuration-22">Configuration</a></h2>
 <h3 id="feature-flag-3"><a class="header" href="#feature-flag-3">Feature Flag</a></h3>
 <p>Push notifications are controlled by the <code>push-notifications</code> feature flag, which is enabled by default. To disable:</p>
 <pre><code class="language-toml"># In your Cargo.toml or when building
@@ -10644,7 +10886,7 @@ JSON object <code>{"kind":"created","sessionKey":"..."}</code> dispatched to
 device that connects to your gateway and executes commands on your behalf.
 This lets the AI agent run shell commands on a Linux server, query a Raspberry
 Pi, or leverage a GPU machine — all from a single chat session.</p>
-<h2 id="how-it-works-15"><a class="header" href="#how-it-works-15">How It Works</a></h2>
+<h2 id="how-it-works-16"><a class="header" href="#how-it-works-16">How It Works</a></h2>
 <pre><code>┌──────────────┐    WebSocket     ┌─────────────────┐
 │  Your laptop │◄────────────────►│  Moltis gateway  │
 │  (browser)   │                  │  (moltis)        │
@@ -11123,7 +11365,7 @@ require registering new passkeys on the new host</li>
 <p>See <a href="security.html#reverse-proxy-deployments">Security Architecture</a> for
 detailed proxy deployment guidance, including a Nginx Proxy Manager
 header snippet and passkey migration guidance.</p>
-<h2 id="session-management"><a class="header" href="#session-management">Session Management</a></h2>
+<h2 id="session-management-1"><a class="header" href="#session-management-1">Session Management</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Operation</th><th>Endpoint</th><th>Auth required</th></tr></thead><tbody>
 <tr><td>Check status</td><td><code>GET /api/auth/status</code></td><td>No</td></tr>
 <tr><td>Set password (setup)</td><td><code>POST /api/auth/setup</code></td><td>Setup code</td></tr>
@@ -11464,7 +11706,7 @@ drift re-trust, dependency install guards, kill switch, audit log), see
 <p>By default, Moltis requires explicit user approval before executing potentially
 dangerous commands. This “human-in-the-loop” design ensures the AI cannot take
 destructive actions without consent.</p>
-<h3 id="how-it-works-16"><a class="header" href="#how-it-works-16">How It Works</a></h3>
+<h3 id="how-it-works-17"><a class="header" href="#how-it-works-17">How It Works</a></h3>
 <p>When the agent wants to run a command:</p>
 <ol>
 <li>The command is analyzed against approval policies</li>
@@ -12558,7 +12800,7 @@ fly secrets set MOLTIS_PASSWORD="your-password"
 # Create persistent storage
 fly volumes create moltis_data --region iad --size 1
 </code></pre>
-<h3 id="how-it-works-17"><a class="header" href="#how-it-works-17">How it works</a></h3>
+<h3 id="how-it-works-18"><a class="header" href="#how-it-works-18">How it works</a></h3>
 <ul>
 <li><strong>Image</strong>: pulled from <code>ghcr.io/moltis-org/moltis:latest</code></li>
 <li><strong>Port</strong>: internal 8080, Fly terminates TLS and routes HTTPS traffic</li>
@@ -13404,7 +13646,7 @@ startup in the correct dependency order.</p>
     │   └── 20240205100004_init.sql   # files, chunks, embedding_cache, FTS
     └── src/lib.rs                     # run_migrations() (separate memory.db)
 </code></pre>
-<h2 id="how-it-works-18"><a class="header" href="#how-it-works-18">How It Works</a></h2>
+<h2 id="how-it-works-19"><a class="header" href="#how-it-works-19">How It Works</a></h2>
 <h3 id="migration-ownership"><a class="header" href="#migration-ownership">Migration Ownership</a></h3>
 <p>Each crate is autonomous and owns its schema:</p>
 <div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Database</th><th>Tables</th><th>Migration File</th></tr></thead><tbody>
@@ -13867,7 +14109,7 @@ fn main() {
 
     // Now spans will add labels to metrics
 }</code></pre></pre>
-<h3 id="how-it-works-19"><a class="header" href="#how-it-works-19">How It Works</a></h3>
+<h3 id="how-it-works-20"><a class="header" href="#how-it-works-20">How It Works</a></h3>
 <p>When tracing is enabled, span fields are automatically added as metric labels:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -13952,7 +14194,7 @@ pub mod my_feature {
 
 counter!(my_feature::OPERATIONS_TOTAL).increment(1);
 <span class="boring">}</span></code></pre></pre>
-<h2 id="configuration-22"><a class="header" href="#configuration-22">Configuration</a></h2>
+<h2 id="configuration-23"><a class="header" href="#configuration-23">Configuration</a></h2>
 <p>Metrics configuration in <code>moltis.toml</code>:</p>
 <pre><code class="language-toml">[metrics]
 enabled = true              # Enable metrics collection (default: true)
@@ -14051,11 +14293,11 @@ tools grouped by origin.</p>
 With many MCP servers this can burn 15,000+ tokens per turn. <strong>Lazy mode</strong>
 replaces all tool schemas with a single <code>tool_search</code> meta-tool that the model
 uses to discover and activate tools on demand.</p>
-<h3 id="configuration-23"><a class="header" href="#configuration-23">Configuration</a></h3>
+<h3 id="configuration-24"><a class="header" href="#configuration-24">Configuration</a></h3>
 <pre><code class="language-toml">[tools]
 registry_mode = "lazy"   # default: "full"
 </code></pre>
-<h3 id="how-it-works-20"><a class="header" href="#how-it-works-20">How it works</a></h3>
+<h3 id="how-it-works-21"><a class="header" href="#how-it-works-21">How it works</a></h3>
 <ol>
 <li>The model receives only <code>tool_search</code> in its tool list.</li>
 <li><code>tool_search(query="memory")</code> returns name + description pairs (max 15), no schemas.</li>
